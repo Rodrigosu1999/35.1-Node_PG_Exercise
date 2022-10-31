@@ -43,12 +43,22 @@ router.patch('/:id', async (req, res, next) => {
     try {
         const id = req.params.id;
         const {amt} = req.body;
-        const results = await db.query("UPDATE invoices SET amt = $1 WHERE id = $2 RETURNING *", [amt, id]);
-
-        if (results.rows.length === 0) {
-            throw new ExpressError(`Can't find company with code ${code}`, 404)
+        const paid = req.body.paid;
+        let results;
+        if (paid) {
+            const paid_date = new Date();
+            results = await db.query("UPDATE invoices SET amt = $1, paid = $2, paid_date = $3 WHERE id = $4 RETURNING *", [amt, paid, paid_date, id]);
+        } else if (paid === false){
+            const paid_date = null;
+            results = await db.query("UPDATE invoices SET amt = $1, paid = $2, paid_date = $3 WHERE id = $4 RETURNING *", [amt, paid, paid_date, id]);
+        } else {
+            results = await db.query("UPDATE invoices SET amt = $1 WHERE id = $2 RETURNING *", [amt, id]);
         }
-        return res.status(201).json({company: results.rows[0]});
+    
+        if (results.rows.length === 0) {
+            throw new ExpressError(`Can't find invocie with id ${id}`, 404)
+        }
+        return res.status(201).json({invoice: results.rows[0]});
     } catch (err){
         return next(err);
     }
@@ -63,6 +73,30 @@ router.delete('/:id', async (req, res, next) => {
             throw new ExpressError(`Can't find company with code ${id}`, 404)
         }
         return res.json({msg: "Invoice deleted"});
+    } catch (err){
+        return next(err);
+    }
+});
+
+//invoices/companies/:code get route to display all companies invoices in database
+router.get('/companies/:code', async (req, res, next) => {
+    try {
+        const codeParam = req.params.code;
+        const results = await db.query(
+            `SELECT *  
+            FROM companies 
+            JOIN invoices
+            ON companies.code = invoices.comp_code 
+            WHERE code = $1`, [codeParam]
+            );
+        if (results.rows.length === 0) {
+            throw new ExpressError(`Can't find company with code ${codeParam}`, 404)
+        }
+        const {code, name, description} = results.rows[0];
+        const invoices = results.rows.map(r => (
+            {id: r.id, amt: r.amt, paid: r.paid, add_date:r.add_date, paid_date : r.paid_date}
+        ));
+        return res.json({company: code, name, description, invoices});
     } catch (err){
         return next(err);
     }

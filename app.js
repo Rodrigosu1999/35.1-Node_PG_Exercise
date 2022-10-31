@@ -5,6 +5,7 @@ const app = express();
 const ExpressError = require("./expressError");
 const compRoutes = require("./routes/companies");
 const invRoutes = require("./routes/invoices");
+const indRoutes = require("./routes/industries");
 
 app.use(express.json());
 
@@ -13,6 +14,9 @@ app.use("/companies", compRoutes);
 
 //Invoices routes come from invoices.js
 app.use("/invoices", invRoutes);
+
+//Industries routes come from invoices.js
+app.use("/industries", indRoutes);
 
 
 /** 404 handler */
